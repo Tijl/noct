@@ -125,9 +125,7 @@
     function endExperiment(dataset,callback) {
       console.log(dataset) // comment out to avoid console log
       jsPsych.turk.submitToTurk({data:dataset})
-      document.getElementById("databox").value = dataset;
       setTimeout(callback,500)
-      $.post('submit',{}); // post data
     }
     
     jsPsych.init({
