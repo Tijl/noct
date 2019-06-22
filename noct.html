@@ -2,7 +2,6 @@
 <html>
     <head>
         <title>Categorisation experiment</title>
-
         <script src="https://run.pavlovia.org/tijl/noct/lib/vendors/jspsych-6.0.0/jspsych.js"></script>
         <script src="https://run.pavlovia.org/tijl/noct/lib/vendors/jspsych-6.0.0/plugins/jspsych-html-keyboard-response.js"></script>
         <script src="https://run.pavlovia.org/tijl/noct/lib/vendors/jspsych-6.0.0/plugins/jspsych-html-button-response.js"></script>
@@ -67,8 +66,8 @@
     for (var len = -12; len <= 12; len++) {
       for (var ori = -12; ori <= 12; ori++) {
        stimnum++;
-       if (isoffline) {
-        path = "stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png?raw=true"
+       if (1) {
+        path = "stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png"
        } else {
         path = "https://raw.githubusercontent.com/Tijl/noct/master/online_exp/stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png?raw=true"
        }
@@ -90,14 +89,9 @@
     };
     timeline.push(instructions);
     
-    if (isoffline) {
-      var fixation_path = "fixation.png";
-    } else {
-      var fixation_path = "https://raw.githubusercontent.com/Tijl/noct/master/online_exp/fixation.png?raw=true";
-    };
     var fixation = {
       type: 'image-keyboard-response',
-      stimulus: fixation_path,
+      stimulus: "fixation.png",
       prompt: question,
       choices: jsPsych.NO_KEYS,
       trial_duration: 250,
