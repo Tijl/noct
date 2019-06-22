@@ -13,12 +13,9 @@
     <body><input autocomplete="off" id="data" name="data" type="text" visibility: hidden /><div id="experiment_link">You must accept the HIT to begin the experiment</div></body>
     <script>
 
-    var isoffline = 0;
-
     var questions = ["longer", "shorter", "pointed up", "pointed down"]
     
     var questionnumber = jsPsych.data.getURLVariable('q')
-    questionnumber=1
     var targetfeature = questions[questionnumber-1]
     if (typeof targetfeature == 'undefined') {
       throw new Error("targetfeature undefined");
@@ -64,7 +61,7 @@
        test_stimuli.push({stimulus: path, data: { test_part: 'test'}})
       }
     }
-    test_stimuli = test_stimuli.slice(0,2)
+    //test_stimuli = test_stimuli.slice(0,2)
     var nstim = test_stimuli.length
     
     var instructions = {
@@ -109,10 +106,10 @@
     timeline.push(test_procedure);
     
     // record the turkcode in the jsPsych data
-      jsPsych.data.addProperties({
-        turkcode: turkcode,
-        targetfeature: targetfeature,
-      });
+    jsPsych.data.addProperties({
+      turkcode: turkcode,
+      targetfeature: targetfeature,
+    });
 
     function endExperiment(dataset,turkcode,callback) {
       var datatext = dataset.replace(/(\r\n|\n|\r)/gm,'####')
