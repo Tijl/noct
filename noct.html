@@ -66,11 +66,7 @@
     for (var len = -12; len <= 12; len++) {
       for (var ori = -12; ori <= 12; ori++) {
        stimnum++;
-       if (1) {
-        path = "stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png"
-       } else {
-        path = "https://raw.githubusercontent.com/Tijl/noct/master/online_exp/stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png?raw=true"
-       }
+       path = "stimuli/stim_"+strpad(stimnum,3)+"_len_"+strpad(len,2)+"_ori_"+strpad(ori,2)+".png",
        images.push(path);
        test_stimuli.push({stimulus: path, data: { test_part: 'test'}})
       }
