@@ -14,19 +14,11 @@
 
     var isoffline = 0;
 
-    var turkInfo = jsPsych.turk.turkInfo();
-    console.log(turkInfo)
-    // if(turkInfo.previewMode || turkInfo.outsideTurk) {
-    //   $('#turkInfo').html('<div id="experiment_link">You must accept the HIT to begin the experiment</div>');
-    //   throw new Error("accept hit first");
-    // }
-
     var questions = ["longer", "shorter", "pointed up", "pointed down"]
     
     var questionnumber = jsPsych.data.getURLVariable('q')
-
+    questionnumber=1
     var targetfeature = questions[questionnumber-1]
-    targetfeature=1
     if (typeof targetfeature == 'undefined') {
       throw new Error("targetfeature undefined");
     }
@@ -39,7 +31,7 @@
     
     var researcher_name = "Dr. Tijl Grootswagers"
     var time_required = "15 minutes"
-    var payment_amount = "$1,50"
+    var payment_amount = "$1.50"
     
     var consent = {
         type: 'html-button-response',
@@ -71,7 +63,7 @@
        test_stimuli.push({stimulus: path, data: { test_part: 'test'}})
       }
     }
-    //test_stimuli = test_stimuli.slice(0,2)
+    test_stimuli = test_stimuli.slice(0,2)
     var nstim = test_stimuli.length
     
     var instructions = {
@@ -109,8 +101,7 @@
 
     var test_procedure = {
       timeline: [fixation,test,fixation],
-      timeline_variables: test_stimuli.slice(0,5),
-      //timeline_variables: test_stimuli,
+      timeline_variables: test_stimuli,
       randomize_order: true,
       repetitions: 1
     }
@@ -119,12 +110,28 @@
     // record the turkcode in the jsPsych data
       jsPsych.data.addProperties({
         turkcode: turkcode,
-        question: question
+        targetfeature: targetfeature,
       });
 
-    function endExperiment(dataset,callback) {
+    function endExperiment(dataset,turkcode,callback) {
+      var datatext = dataset.replace(/(\r\n|\n|\r)/gm,'####')
       console.log(dataset) // comment out to avoid console log
-      jsPsych.turk.submitToTurk({data:dataset})
+      var webhook_url='https://hooks.slack.com/services/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'
+      $.ajax({
+          data: 'payload=' + JSON.stringify({
+              text: turkcode,
+              channel: "turk",
+              attachments: [{
+                title: "attach",
+                text: datatext,
+              }
+            ],
+          }),
+          dataType: 'json',
+          processData: false,
+          type: 'POST',
+          url: webhook_url
+      });
       setTimeout(callback,500)
     }
     
@@ -135,7 +142,7 @@
         show_preload_progress_bar: true,
         auto_update_progress_bar: false,
         on_finish: function() { 
-            endExperiment(jsPsych.data.get().csv(), function() {
+            endExperiment(jsPsych.data.get().filter({test_part: "test"}).csv(),turkcode, function() {
             document.write('<div id="endscreen" class="endscreen" style="width:1000px"><div class="endscreen" style="text-align:center; border:0px solid; padding:10px; font-size:120%; width:800px; float:right"><p><br><br><br>Experiment Finished!<br><br>Your completion code is <span id="turkcode" style="font-weight:bold;font-size:130%">' + turkcode + '</span><br><br>To receive payment for the HIT, return to the Amazon Mechanical Turk page, enter this code and submit the HIT.</p></div></div>')
           }
           )
