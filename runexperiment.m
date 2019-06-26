@@ -16,7 +16,7 @@ p.isrealexperiment = 0; %should only be 0 for testing; skips overwrite checks an
 p.fullscreen = 0; %should only be 0 for testing; if 0 it does not create a fullscreen window
 p.isFMRIexperiment = 0; %should only be 0 for testing; does not send or wait for triggers
 p.synctest = 0; %should only be 0 for testing; skips synchronisation tests
-p.this_is_not_a_drill = 0; %should only be 0 for practice; gives feedback and exits after 4 blocks
+p.this_is_not_a_drill = 1; %should only be 0 for practice; gives feedback and exits after 4 blocks
 
 %timing parameters
 p.stimulusduration = 0.200; %stimulus duration (secs);
@@ -451,7 +451,7 @@ for eventnr=1:nevents
     eventlist.time_trigger_mean{eventnr} = time_trigger_mean;
     eventlist.time_trigger_std{eventnr} = time_trigger_std;
 end
-finish up 
+% finish up 
 writetable(eventlist,p.csvdatafilename)
 save(p.datafilename,'p','eventlist');
 
