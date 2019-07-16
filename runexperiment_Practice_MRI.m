@@ -14,9 +14,10 @@ p=struct();
 %debugging/testing parameters: CHECK THESE!
 p.isrealexperiment = 1; %should only be 0 for testing; skips overwrite checks and doesn't ask for subject nr
 p.fullscreen = 1; %should only be 0 for testing; if 0 it does not create a fullscreen window
-p.isFMRIexperiment = 1; %should only be 0 for testing; does not send or wait for triggers
+p.isFMRIexperiment = 0; %should only be 0 for testing; does not send or wait for triggers
 p.synctest = 1; %should only be 0 for testing; skips synchronisation tests
-p.this_is_not_a_drill = 1; %should only be 0 for practice; gives feedback and exits after 4 blocks
+p.this_is_not_a_drill = 0; %should only be 0 for practice; gives feedback and exits after 4 blocks
+p.button_box = 1;   % Button box (1) or keyboard (0)
 
 %timing parameters
 p.stimulusduration = 0.200; %stimulus duration (secs);
@@ -31,7 +32,7 @@ p.fixationsize = 20; %diameter of fixation cross (pixels)
 p.backgroundcolor = [100 100 100]; %backround (same grey as stimulus background)
 p.fontsize = 30; %font size for all the things
 p.windowsize = [0 0 800 600]; %windowsize if not running fullscreen
-p.stimulussize = [0 0 201 201]; %size of stimulus in pixels: 201 pix ~ 2.6628 deg
+p.stimulussize = [0 0 201 201]; %size of stimulus in pixels
 
 %responsekey parameters (eg 1! and 2@ are the response buttons in MEG)
 p.responsekeysleft = [KbName('1') KbName('1!')];
@@ -47,10 +48,6 @@ p.num_baseline_triggers = floor(p.block_num_message_time/p.tr)-1; % Automaticall
 p.nruns = 8; %number of runs (this cannot be changed easily)
 p.trialsperrun = 144; %how many trials per block (this cannot be changed easily)
 
-% We will save the times of the baseline triggers we're getting at the
-% start of each run here.
-p.trigger_times = zeros(p.num_baseline_triggers,p.nruns);
-
 %% numbers
 % for x = [24 26 28 30]
 % p.trialsperrun = (x^2)*2 / 8;
@@ -64,8 +61,8 @@ p.estimatedexperimentduration_minutes = p.nruns * p.estimatedrunduration_minutes
 
 % set stimulus parameters
 p.stimuli = struct();i=0;
-for len = [-12:-1 1:12]
-    for ori = [-12:-1 1:12]
+for len = [-8:-5 5:8]
+    for ori = [-8:-5 5:8]
         if p.this_is_not_a_drill
             fn = dir(sprintf('exp_stimuli%s*len_%02i_ori_%02i.png',filesep,len,ori));
         else
@@ -77,12 +74,12 @@ for len = [-12:-1 1:12]
         p.stimuli(i).len = len;
         p.stimuli(i).ori = ori;
         p.stimuli(i).fn = fn.name;
-        p.stimuli(i).fol = 'E:\Denise_Moerel\noct_frmi\exp_stimuli';
+        p.stimuli(i).fol = 'E:\Denise_Moerel\noct_frmi\exp_stimuli_practice';
         p.stimuli(i).run = 1+mod(abs(len)-abs(ori),4);
     end
 end
 p.nstimuli = length(p.stimuli);
-assert(p.nstimuli==576)
+assert(p.nstimuli==64)
 
 %% get subject info
 if ~p.isrealexperiment
@@ -324,17 +321,13 @@ for eventnr=1:nevents
         if currentrun > 1 %show feedback if not first block
             idx = eventlist.runnumber==(currentrun-1);
             acc = mean(eventlist.correct(idx))*100;
-%             instructiontext = sprintf('%.2f%% correct\n\n\n%s',acc, instructiontext);
-            feedbacktext = sprintf('%.2f%% correct\n\n\n',acc);
-            instructiontext = sprintf('%s', instructiontext);
-            DrawFormattedText(p.window, feedbacktext, 'center', 'center', p.white);
-            Screen('Flip', p.window);
-        end
-        if p.isFMRIexperiment && currentrun > 1 % wait to get full HRF of last stim
-            WaitSecs(p.feedbackduration);
+            instructiontext = sprintf('%.2f%% correct\n\n\n%s',acc, instructiontext);
         end
         DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
         Screen('Flip', p.window);
+        if p.isFMRIexperiment && currentrun > 1 % wait to get full HRF of last stim
+            WaitSecs(p.feedbackduration);
+        end
         %wait for any keypress to start the run
         keycode=[];
         while isempty(keycode) || ~keycode(KbName('space'))
@@ -345,26 +338,18 @@ for eventnr=1:nevents
         % Get n triggers as a baseline
         triggerlist = nan(p.num_baseline_triggers,2);
         for trigger_num = 1:p.num_baseline_triggers
-            if trigger_num==1
-                instructiontext = sprintf('Block %i/%i\n\n%s\n\nWaiting for scanner', currentrun, nruns, questiontext);
-                DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
-            else
-                instructiontext = sprintf('Block %i/%i\n\n%s\n\nGet ready!', currentrun, nruns, questiontext);
-                DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
-            end
+            instructiontext = sprintf('Block %i/%i\n\n%s\n\nWaiting for scanner', currentrun, nruns, questiontext);
+            DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
             Screen('Flip', p.window);
             if p.isFMRIexperiment
                 % Get trigger
                 [pulse_time,~,daqstate] = scansync(1,Inf);
                 triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
             else
-                if p.this_is_not_a_drill %wait for scanner
-                    WaitSecs(p.tr);
-                end
+            	WaitSecs(p.tr);
                 triggerlist(trigger_num,1) = GetSecs();
             end
         end
-        p.trigger_times(:,currentrun) = triggerlist(:,1);
         time_runstart = triggerlist(1,1);
         time_trigger_mean = mean(diff(triggerlist(:,1)));
         time_trigger_std = std(diff(triggerlist(:,1)));
@@ -391,7 +376,7 @@ for eventnr=1:nevents
     
     %check for reponse
     [response,RT,correct]=deal(0);
-    if p.isFMRIexperiment
+    if p.button_box
         % Wait the allowed time for a button to be pressed
         rt = scansync([2,3],time_stimon+p.responseduration-p.halfrefresh);
         % Get the response button and rt
@@ -405,16 +390,16 @@ for eventnr=1:nevents
             end
             correct = strcmp(eventlist.correctresp(eventnr),response);
         end
-        % for practice, show feedback
-        if ~p.this_is_not_a_drill
-            if correct
-                drawfixationgreen();
-            else
-                drawfixationred();
-            end
-            DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
-            Screen('Flip',p.window);
-        end            
+%         % for practice, show feedback
+%         if ~p.this_is_not_a_drill
+%             if correct
+%                 drawfixationgreen();
+%             else
+%                 drawfixationred();
+%             end
+%             DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
+%             Screen('Flip',p.window);
+%         end            
         % Use remaining time to check for an escape key to allow exit
         while GetSecs()-time_stimon < p.responseduration
             [keydown,~,keycode] = KbCheck();
@@ -435,15 +420,15 @@ for eventnr=1:nevents
                     if response
                         RT = secs-time_stimon;
                         correct = strcmp(eventlist.correctresp(eventnr),response);
-                        if ~p.this_is_not_a_drill
-                            if correct
-                                drawfixationgreen();
-                            else
-                                drawfixationred();
-                            end
-                            DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
-                            Screen('Flip',p.window);
-                        end          
+%                         if ~p.this_is_not_a_drill
+%                             if correct
+%                                 drawfixationgreen();
+%                             else
+%                                 drawfixationred();
+%                             end
+%                             DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
+%                             Screen('Flip',p.window);
+%                         end          
                     end
                 end
                 if keycode(KbName('escape')) %emergency exit
@@ -465,23 +450,17 @@ for eventnr=1:nevents
     eventlist.time_trigger_mean{eventnr} = time_trigger_mean;
     eventlist.time_trigger_std{eventnr} = time_trigger_std;
 end
-%finish up 
+% finish up 
 writetable(eventlist,p.csvdatafilename)
 save(p.datafilename,'p','eventlist');
 
 acc = mean(eventlist.correct)*100;
-DrawFormattedText(p.window, sprintf('%.2f%% correct',acc*100), 'center', 'center', p.white); %AW 27/6, convert to %
-Screen('Flip', p.window);
-WaitSecs(p.feedbackduration);
-DrawFormattedText(p.window, sprintf('Experiment complete!\n\nRelax and wait for experimenter...\n\nExperimenter: press <space> to exit'), 'center', 'center', p.white);
-Screen('Flip', p.window);
+DrawFormattedText(p.window, sprintf('%.2f%% correct\n\n\nEnd of the practice\n\nPlease keep still and wait for experimenter...\n\nExperimenter: press <space> to exit',acc), 'center', 'center', p.white);
 
+Screen('Flip', p.window);
 keycode=[];
 while isempty(keycode) || ~keycode(KbName('space'))
     [~, keycode, ~] = KbWait();
 end
 Priority(0);ListenChar(0);ShowCursor();
 Screen('CloseAll');
-
-
-
