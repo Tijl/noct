@@ -21,7 +21,7 @@ p.this_is_not_a_drill = 1; %should only be 0 for practice; gives feedback and ex
 
 %timing parameters
 p.stimulusduration = 0.200; %stimulus duration (secs);
-p.responseduration = 0.2; %response duration from stimulus onset (secs);
+p.responseduration = 2; %response duration from stimulus onset (secs);
 p.halfrefresh = .5/60; %to subtract from fliptimes
 p.blockstartfixationduration = 2; %fixation duration at start of block (before first stim)
 p.feedbackduration = 16; %minimum time to leave feedback on screen to capture full HRF (secs)
@@ -328,8 +328,6 @@ for eventnr=1:nevents
                 triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
             end
             p.trigger_times(:,currentrun-1) = triggerlist(:,1);
-            time_trigger_mean = mean(diff(triggerlist(:,1)));
-            time_trigger_std = std(diff(triggerlist(:,1)));
             p.triggerlist{currentrun-1} = triggerlist;
             Screen('Flip',p.window,time_feedbackon+p.feedbackduration);
         end
@@ -440,10 +438,19 @@ save(p.datafilename,'p','eventlist');
 
 acc = mean(eventlist.correct)*100;
 DrawFormattedText(p.window, sprintf('%.2f%% correct',acc*100), 'center', 'center', p.white); %AW 27/6, convert to %
-Screen('Flip', p.window);
-WaitSecs(p.feedbackduration);
+
+time_feedbackon = Screen('Flip', p.window);
+% Get triggers while we wait for full HRF of last stim
+triggerlist = nan(p.num_baseline_triggers,2);
+for trigger_num = 1:p.num_baseline_triggers
+    [pulse_time,~,daqstate] = scansync(1,Inf);
+    triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
+end
+p.trigger_times(:,currentrun-1) = triggerlist(:,1);
+p.triggerlist{currentrun-1} = triggerlist;
+
 DrawFormattedText(p.window, sprintf('Experiment complete!\n\nRelax and wait for experimenter...\n\nExperimenter: press <space> to exit'), 'center', 'center', p.white);
-Screen('Flip', p.window);
+Screen('Flip', p.window, time_feedbackon+p.feedbackduration);
 
 keycode=[];
 while isempty(keycode) || ~keycode(KbName('space'))
