@@ -145,7 +145,7 @@ p.experimentcode = fileread('runexperiment_v2.m');
 
 %% create trialstructure for all runs and blocks
 
-% create yoked stimulus orders (for the two dimensions)
+% create stimulus orders (for the two dimensions)
 eventlist = table();
 p.runqs = {};
 if mod(p.subjectnr,2)
@@ -164,7 +164,7 @@ while ~all(diff(p.runstims))
 end
 
 for runnr = 1:p.nruns
-    % find stimuli to present this run
+    % stimulus set to present this run
     stimulithisrun = [p.stimuli([p.stimuli(:).run]==p.runstims(runnr)).stimnum];
     sequence = randsample(stimulithisrun',length(stimulithisrun));
     % add sequence to trialstruct
