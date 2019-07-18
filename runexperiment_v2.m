@@ -16,8 +16,7 @@ p.isrealexperiment = 1; %should only be 0 for debugging; skips overwrite checks 
 p.fullscreen = 0; %should only be 0 for debugging; if 0 it does not create a fullscreen window
 p.isFMRIexperiment = 1; %should only be 0 for debugging; does not send or wait for triggers
 p.synctest = 0; %should only be 0 for debugging; skips synchronisation tests
-p.buttonbox = 0; %should only be 0 for debugging; uses keyboard instead of buttonbox
-p.this_is_not_a_drill = 1; %should only be 0 for practice; gives feedback and exits after 2 blocks
+p.this_is_not_a_drill = 0; %should only be 0 for practice; gives feedback and exits after 2 blocks
 
 %timing parameters
 p.stimulusduration = 0.200; %stimulus duration (secs);
@@ -367,58 +366,34 @@ for eventnr=1:nevents
     
     %check for reponse
     [response,RT,correct]=deal(0);
-    if p.buttonbox
-        % Wait the allowed time for a button to be pressed
-        rt = scansync([2,3],time_stimon+p.responseduration-p.halfrefresh);
-        % Get the response button and rt
-        if any(isfinite(rt))
-            [RT,resp] = min(rt);
-            RT = RT-time_stimon; % Subtract stimon time to get the RT
-            if resp==1
-                response = 'left';
-            elseif resp==2
-                response = 'right';
-            end
-            correct = strcmp(eventlist.correctresp(eventnr),response);
+    % Wait the allowed time for a button to be pressed
+    rt = scansync([2,3],time_stimon+p.responseduration-p.halfrefresh);
+    % Get the response button and rt
+    if any(isfinite(rt))
+        [RT,resp] = min(rt);
+        RT = RT-time_stimon; % Subtract stimon time to get the RT
+        if resp==1
+            response = 'left';
+        elseif resp==2
+            response = 'right';
         end
-        % for practice, show feedback
-        if ~p.this_is_not_a_drill
-            if correct
-                drawfixationgreen();
-            else
-                drawfixationred();
-            end
-            DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
-            Screen('Flip',p.window);
+        correct = strcmp(eventlist.correctresp(eventnr),response);
+    end
+    % for practice, show feedback
+    if ~p.this_is_not_a_drill
+        if correct
+            drawfixationgreen();
+        else
+            drawfixationred();
         end
-    else %use keyboard - for debugging or training
-        while GetSecs()-time_stimon < p.responseduration - p.halfrefresh
-            [keydown, secs, keycode] = KbCheck();
-            if keydown
-                if ~response
-                    if any(keycode(p.responsekeysleft))
-                        response = 'left';
-                    elseif any(keycode(p.responsekeysright))
-                        response = 'right';
-                    end
-                    if response
-                        RT = secs-time_stimon;
-                        correct = strcmp(eventlist.correctresp(eventnr),response);
-                        if ~p.this_is_not_a_drill
-                            if correct
-                                drawfixationgreen();
-                            else
-                                drawfixationred();
-                            end
-                            DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
-                            Screen('Flip',p.window);
-                        end          
-                    end
-                end
-                if keycode(KbName('escape')) %emergency exit
-                    eval(abort);
-                end
-            end
+        DrawFormattedText(p.window, questiontext, 'center', .75*p.windowrect(4), p.white);
+        Screen('Flip',p.window);
+    end
+    % Use remaining time to check for an escape key to allow exit
+    while GetSecs()-time_stimon < p.responseduration
+        [keydown,~,keycode] = KbCheck();
+        if keydown && keycode(KbName('escape')) % emergency break
+            eval(abort);
         end
     end
     %update the eventlist with results
