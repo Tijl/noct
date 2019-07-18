@@ -16,15 +16,14 @@ p.isrealexperiment = 1; %should only be 0 for debugging; skips overwrite checks 
 p.fullscreen = 0; %should only be 0 for debugging; if 0 it does not create a fullscreen window
 p.isFMRIexperiment = 1; %should only be 0 for debugging; does not send or wait for triggers
 p.synctest = 0; %should only be 0 for debugging; skips synchronisation tests
-p.buttonbox = 1; %should only be 0 for debugging; uses keyboard instead of buttonbox
+p.buttonbox = 0; %should only be 0 for debugging; uses keyboard instead of buttonbox
 p.this_is_not_a_drill = 1; %should only be 0 for practice; gives feedback and exits after 2 blocks
 
 %timing parameters
 p.stimulusduration = 0.200; %stimulus duration (secs);
-p.responseduration = 2; %response duration from stimulus onset (secs);
+p.responseduration = 0.2; %response duration from stimulus onset (secs);
 p.halfrefresh = .5/60; %to subtract from fliptimes
 p.blockstartfixationduration = 2; %fixation duration at start of block (before first stim)
-p.block_num_message_time = 20; % duration of break between blocks (secs)
 p.feedbackduration = 16; %minimum time to leave feedback on screen to capture full HRF (secs)
 
 %display parameters
@@ -40,7 +39,7 @@ p.responsekeysright = [KbName('2') KbName('2@')];
 
 % fMRI parameters
 p.tr = 1.208; % TR in s
-p.num_baseline_triggers = floor(p.block_num_message_time/p.tr)-1; % Automaticall calculate the number of triggers we record as a baseline at the start of each run
+p.num_baseline_triggers = floor(p.feedbackduration/p.tr)-1; % Automaticall calculate the number of triggers we record as a baseline at the start of each run
 
 %% END define parameters
 
@@ -315,63 +314,48 @@ for eventnr=1:nevents
         while KbCheck()
             WaitSecs(0.01);
         end
-        %instructions
-        questiontext = sprintf('On which side are the spikes %s?', eventlist.question{eventnr});
-        instructiontext = sprintf('Block %i/%i\n\n%s\n\nPlease keep still and wait for the experimenter to continue the experiment', currentrun, nruns, questiontext);
-        if currentrun > 1 %show feedback if not first block
+        %if not first block, show feedback and collect triggers
+        if currentrun > 1 
             idx = eventlist.runnumber==(currentrun-1);
             acc = mean(eventlist.correct(idx))*100;
             feedbacktext = sprintf('%.2f%% correct\n\n\n',acc);
             DrawFormattedText(p.window, feedbacktext, 'center', 'center', p.white);
-            Screen('Flip', p.window);
+            time_feedbackon = Screen('Flip', p.window);
+            % Get triggers while we wait for full HRF of last stim
+            triggerlist = nan(p.num_baseline_triggers,2);
+            for trigger_num = 1:p.num_baseline_triggers
+                [pulse_time,~,daqstate] = scansync(1,Inf);
+                triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
+            end
+            p.trigger_times(:,currentrun-1) = triggerlist(:,1);
+            time_trigger_mean = mean(diff(triggerlist(:,1)));
+            time_trigger_std = std(diff(triggerlist(:,1)));
+            p.triggerlist{currentrun-1} = triggerlist;
+            Screen('Flip',p.window,time_feedbackon+p.feedbackduration);
         end
-        if p.isFMRIexperiment && currentrun > 1 % wait to get full HRF of last stim
-            WaitSecs(p.feedbackduration);
-        end
+        %instructions on screen
+        questiontext = sprintf('On which side are the spikes %s?', eventlist.question{eventnr});
+        instructiontext = sprintf('Block %i/%i\n\n%s\n\nPlease keep still and wait for the experimenter to continue the experiment', currentrun, nruns, questiontext);
         DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
-        Screen('Flip', p.window);
+        Screen('Flip',p.window);
         %wait for any keypress to start the run
         keycode=[];
         while isempty(keycode) || ~keycode(KbName('space'))
             [~, keycode, ~] = KbWait();
             if keycode(KbName('escape'));eval(abort);end
         end
-
-        % Get n triggers as a baseline
-        triggerlist = nan(p.num_baseline_triggers,2);
-        for trigger_num = 1:p.num_baseline_triggers
-            if trigger_num==1
-                instructiontext = sprintf('Block %i/%i\n\n%s\n\nWaiting for scanner', currentrun, nruns, questiontext);
-            else
-                instructiontext = sprintf('Block %i/%i\n\n%s\n\nGet ready!', currentrun, nruns, questiontext);
-            end
-            DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
-            Screen('Flip', p.window);
-            if p.isFMRIexperiment
-                % Get trigger
-                [pulse_time,~,daqstate] = scansync(1,Inf);
-                triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
-            else
-                if p.this_is_not_a_drill %simulate wait for scanner
-                    WaitSecs(p.tr);
-                end
-                triggerlist(trigger_num,1) = GetSecs();
-            end
-        end
-        p.trigger_times(:,currentrun) = triggerlist(:,1);
-        time_runstart = triggerlist(1,1);
-        time_trigger_mean = mean(diff(triggerlist(:,1)));
-        time_trigger_std = std(diff(triggerlist(:,1)));
-        p.triggerlist{currentrun} = triggerlist;
-        if p.this_is_not_a_drill %wait for scanner
-            drawfixation();
-            time_runfixstart = Screen('Flip', p.window, time_runstart + p.block_num_message_time - p.halfrefresh);
-        else
-            drawfixation();
-            time_runfixstart = Screen('Flip', p.window);
-        end
+        % Wait for first trigger
+        instructiontext = sprintf('Block %i/%i\n\n%s\n\nWaiting for scanner', currentrun, nruns, questiontext);
+        DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
+        Screen('Flip', p.window);
+        [time_runstart,~,daqstate] = scansync(1,Inf);
+        instructiontext = sprintf('Block %i/%i\n\n%s\n\nGet ready!', currentrun, nruns, questiontext);
+        DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
+        Screen('Flip', p.window);
+        WaitSecs(1);
         drawfixation();
-        Screen('Flip', p.window, time_runfixstart + p.blockstartfixationduration - p.halfrefresh);
+        time_runfixstart = Screen('Flip', p.window);
+        WaitSecs(p.blockstartfixationduration);
     end
     
     %draw stim    
@@ -449,8 +433,6 @@ for eventnr=1:nevents
     eventlist.time_stimon_abs(eventnr) = time_stimon-p.time_experiment_start;
     eventlist.time_stimoff_abs(eventnr) = time_stimoff-p.time_experiment_start;
     eventlist.time_runstart(eventnr) = time_runstart-p.time_experiment_start;
-    eventlist.time_trigger_mean{eventnr} = time_trigger_mean;
-    eventlist.time_trigger_std{eventnr} = time_trigger_std;
 end
 %finish up 
 writetable(eventlist,p.csvdatafilename)
