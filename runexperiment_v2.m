@@ -13,9 +13,9 @@ p=struct();
 
 %debugging/testing parameters: CHECK THESE!
 p.isrealexperiment = 1; %should only be 0 for debugging; skips overwrite checks and doesn't ask for subject nr
-p.fullscreen = 0; %should only be 0 for debugging; if 0 it does not create a fullscreen window
-p.isFMRIexperiment = 1; %should only be 0 for debugging; does not send or wait for triggers
-p.synctest = 0; %should only be 0 for debugging; skips synchronisation tests
+p.fullscreen = 1; %should only be 0 for debugging; if 0 it does not create a fullscreen window
+p.isFMRIexperiment = 0; %should only be 0 for debugging; does not send or wait for triggers
+p.synctest = 1; %should only be 0 for debugging; skips synchronisation tests
 p.this_is_not_a_drill = 0; %should only be 0 for practice; gives feedback and exits after 2 blocks
 
 %timing parameters
@@ -71,7 +71,11 @@ for len = [-12:-1 1:12]
         p.stimuli(i).ori = ori;
         p.stimuli(i).fn = fn.name;
         %p.stimuli(i).fol = 'E:\Denise_Moerel\noct_frmi\exp_stimuli';
-        p.stimuli(i).fol = 'exp_stimuli';
+        if p.this_is_not_a_drill
+            p.stimuli(i).fol = 'exp_stimuli';
+        else
+            p.stimuli(i).fol = 'exp_stimuli_practice';
+        end
         p.stimuli(i).run = 1+mod(abs(len)-abs(ori),4); %run number (1-4)
     end
 end
@@ -323,8 +327,10 @@ for eventnr=1:nevents
             % Get triggers while we wait for full HRF of last stim
             triggerlist = nan(p.num_baseline_triggers,2);
             for trigger_num = 1:p.num_baseline_triggers
-                [pulse_time,~,daqstate] = scansync(1,Inf);
-                triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
+                if p.isFMRIexperiment
+                    [pulse_time,~,daqstate] = scansync(1,Inf);
+                    triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];                
+                end
             end
             p.trigger_times(:,currentrun-1) = triggerlist(:,1);
             p.triggerlist{currentrun-1} = triggerlist;
@@ -345,11 +351,15 @@ for eventnr=1:nevents
         instructiontext = sprintf('Block %i/%i\n\n%s\n\nWaiting for scanner', currentrun, nruns, questiontext);
         DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
         Screen('Flip', p.window);
-        [time_runstart,~,daqstate] = scansync(1,Inf);
+        if p.isFMRIexperiment
+            [time_runstart,~,daqstate] = scansync(1,Inf);
+        else
+            time_runstart = GetSecs();
+        end
         instructiontext = sprintf('Block %i/%i\n\n%s\n\nGet ready!', currentrun, nruns, questiontext);
         DrawFormattedText(p.window, instructiontext, 'center', 'center', p.white);
         Screen('Flip', p.window);
-        WaitSecs(1);
+        WaitSecs(3);
         drawfixation();
         time_runfixstart = Screen('Flip', p.window);
         WaitSecs(p.blockstartfixationduration);
@@ -412,14 +422,16 @@ writetable(eventlist,p.csvdatafilename)
 save(p.datafilename,'p','eventlist');
 
 acc = mean(eventlist.correct)*100;
-DrawFormattedText(p.window, sprintf('%.2f%% correct',acc*100), 'center', 'center', p.white); %AW 27/6, convert to %
+DrawFormattedText(p.window, sprintf('%.2f%% correct',acc), 'center', 'center', p.white); %AW 27/6, convert to %
 
 time_feedbackon = Screen('Flip', p.window);
 % Get triggers while we wait for full HRF of last stim
 triggerlist = nan(p.num_baseline_triggers,2);
 for trigger_num = 1:p.num_baseline_triggers
-    [pulse_time,~,daqstate] = scansync(1,Inf);
-    triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
+    if p.isFMRIexperiment
+        [pulse_time,~,daqstate] = scansync(1,Inf);
+        triggerlist(trigger_num,:) = [pulse_time daqstate.nrecorded(1,1)];
+    end
 end
 p.trigger_times(:,currentrun-1) = triggerlist(:,1);
 p.triggerlist{currentrun-1} = triggerlist;
